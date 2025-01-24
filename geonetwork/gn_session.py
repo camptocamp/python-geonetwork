@@ -21,7 +21,7 @@ logger.addHandler(handler)
 
 
 class GnSession(requests.Session):
-    def __init__(self, credentials: Union[Credentials, None], verifytls: bool = True):
+    def __init__(self, credentials: Union[Credentials, None] = None, verifytls: bool = True):
         self.credentials = credentials
         self.verifytls = verifytls
         self.base_headers: Dict[str, str] = {}

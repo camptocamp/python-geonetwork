@@ -12,6 +12,12 @@ dependencies = [
     "types-requests (>=2.32,<3.0.0)",
 ]
 
+[project.optional-dependencies]
+test = [
+     "pytest",
+     "requests-mock",
+]
+
 [tool.poetry]
 packages = [
   {include = "geonetwork"},

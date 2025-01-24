@@ -14,5 +14,6 @@ dependencies = [
 
 [tool.poetry]
 packages = [
+  {include = "geonetwork"},
   {include = "geonetwork/py.typed"},
 ]

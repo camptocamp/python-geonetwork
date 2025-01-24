@@ -1,7 +1,7 @@
-import requests
-from typing import Union, Literal
+from io import BytesIO
+from typing import Union, Literal, Any
 from .gn_session import GnSession, Credentials, logger
-from .exceptions import APIVersionException
+from .exceptions import APIVersionException, ParameterException
 
 
 GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
@@ -45,13 +45,33 @@ class GnApi:
         logger.info("GN API Session started with geonetwork server version %s", version)
         return resp
 
+    def get_record_zip(self, uuid: str) -> bytes:
+        resp = self.session.get(
+            f"{self.api_url}/records/{uuid}",
+            headers={"accept": "application/zip"},
+        )
+        if resp.status_code == 404:
+            raise ParameterException({"code": 404, "msg": f"UUID {uuid} not found"})
+        resp.raise_for_status()
+        return resp.content
+
+    def put_record_zip(self, zipdata: bytes, overwrite: bool = True) -> Any:
+        resp = self.session.post(
+            f"{self.api_url}/records",
+            files={"file": ("file.zip", BytesIO(zipdata), "application/zip")},
+            params={
+                "metadataType": "METADATA",
+                "uuidProcessing": "OVERWRITE" if overwrite else "GENERATEUUID",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
     def get_metadataxml(self, uuid):
         headers = {
             'Accept': 'application/xml',
         }
         url = self.server + "/records/"+uuid
-
-        self.session = requests.Session()
         resp = self.session.get(
             url,
             headers=headers,
@@ -86,8 +106,11 @@ class GnApi:
         response = self.session.get(url)
         return response.json()
 
-    # not working yet
     def add_thesaurus_dict(self, filename):
+        """
+        Not working yet
+        ongoing
+        """
         headers = {
             'Accept': 'application/json',
             'X-XSRF-TOKEN': self.xsrf_token,
@@ -108,7 +131,6 @@ class GnApi:
         cookies = {
             'XSRF-TOKEN': self.xsrf_token,
         }
-        self.session = requests.Session()
         response = self.session.post(
             self.server + '/geonetwork/srv/api/registries/vocabularies?_csrf='+self.xsrf_token,
             auth=(self.username, self.password),
@@ -128,12 +150,16 @@ class GnApi:
         print(response)
         print(response.text)
 
-    # format of name [internal|external].[theme|place|...].[name]
     def delete_thesaurus_dict(self, name):
+        """
+        Use geonetwork API to remove a thesaurus entry
+        :param name: The name of the refered entry should look like
+                     [internal|external].[theme|place|...].[name]
+        """
         url = self.api_url + "/registries/vocabularies/" + name
         response = self.session.delete(url)
         response.raise_for_status()
         return response.json()
 
-    def closesession(self):
+    def close_session(self):
         self.session.close()

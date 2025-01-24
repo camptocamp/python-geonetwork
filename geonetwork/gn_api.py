@@ -1,64 +1,67 @@
 import requests
-import json
+from typing import Union, Literal
+from .gn_session import GnSession, Credentials, logger
+from .exceptions import APIVersionException
+
+
+GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
 
 
 class GnApi:
-    def __init__(self, server, username, password, verifytls=True):
-        self.server = server
-        self.username = username
-        self.password = password
-        self.xsrf_token = ""
-        self.session = None
-        self.verifytls = verifytls
+    def __init__(
+        self,
+        api_url: str,
+        credentials: Union[Credentials, None] = None,
+        verifytls: bool = True,
+    ):
+        self.api_url = api_url
+        self.credentials = credentials
 
-    def get_gnversion(self):
-        url = self.server + '/geonetwork/srv/api/site'
-        self.session = requests.Session()
-        response = requests.Session().get(url, headers={'Accept': 'application/json'}, verify=self.verifytls)
-        self.session.close()
-        return response.text
+        self.session = GnSession(self.credentials, verifytls)
+        self.session.set_base_header("Accept", "application/json")
+        self.init_xsrf_token()
 
-    # put this right before function
-    def generate_xsfr(self):
-        print("toto")
-        authenticate_url = self.server + '/geonetwork/srv/fre/info?type=me'
+    def init_xsrf_token(self):
+        resp = self.get_version()
+        self.xsrf_token = resp.cookies.get("XSRF-TOKEN", path="/geonetwork")
+        self.session.set_base_header("X-XSRF-TOKEN", self.xsrf_token)
 
-        # To generate the XRSF token, send a post request to the
-        # following URL: http://localhost:8080/geonetwork/srv/eng/info?type=me
-        self.session = requests.Session()
-        response = self.session.post(authenticate_url, verify=self.verifytls)
-        self.session.close()
-        # print(response.cookies)
-        # Extract XRSF token
-        self.xsrf_token = response.cookies.get("XSRF-TOKEN", path="/geonetwork")
-        if self.xsrf_token:
-            print("The XSRF Token is:", self.xsrf_token)
-        else:
-            print(response.text)
-            print("Unable to find the XSRF token")
+    def get_version(self):
+        version_url = self.api_url + "/site"
+        resp = self.session.get(version_url)
+        resp.raise_for_status()
+        version = resp.json().get("system/platform/version")
+        if (
+            (version is None)
+            or (version < GN_VERSION_RANGE[0])
+            or (version > GN_VERSION_RANGE[1])
+        ):
+            raise APIVersionException(
+                {
+                    "code": 501,
+                    "msg": f"Version {version} not in allowed range {GN_VERSION_RANGE}",
+                }
+            )
+        logger.info("GN API Session started with geonetwork server version %s", version)
+        return resp
 
     def get_metadataxml(self, uuid):
-        headers = {'Accept': 'application/xml',
-                   'X-XSRF-TOKEN': self.xsrf_token,
-                   }
-        url = self.server + "/geonetwork/srv/api/records/"+uuid
+        headers = {
+            'Accept': 'application/xml',
+        }
+        url = self.server + "/records/"+uuid
 
         self.session = requests.Session()
-        response = self.session.get(
+        resp = self.session.get(
             url,
-            auth=(self.username, self.password),
-            headers=headers, verify=self.verifytls
+            headers=headers,
         )
-        self.session.close()
-        if(response.status_code == 200):
-            return response.text
+        resp.raise_for_status()
+        return resp.content
 
-    # possible value for uuidprocessing : NOTHING , OVERWRITE , GENERATEUUID
-    def upload_metadata(self, metadata, groupid='100', uuidprocessing='GENERATEUUID', publish=False):
-        headers = {
-            'Accept': 'application/json',
-            'X-XSRF-TOKEN': self.xsrf_token,
-        }
+    UuidProcs = Literal["NOTHING", "OVERWRITE", "GENERATEUUID", "REMOVE_AND_REPLACE"]
+
+    def upload_metadata(self, metadata, groupid='100', uuidprocessing: UuidProcs = "GENERATEUUID", publish=False):
 
         # Set the parameters
         params = {
@@ -69,47 +72,19 @@ class GnApi:
             'publishToAll': str(publish).lower()
         }
 
-        # session = requests.Session()
-
-        # print(username, password, xsrf_token, server, params, headers)
-        # Send a put request to the endpoint
-        self.session = requests.Session()
         response = self.session.post(
-            self.server + '/geonetwork/srv/api/records',
+            self.api_url + '/records',
             json=params,
-            cookies={'XSRF-TOKEN': self.xsrf_token},
             params=params,
-            auth=(self.username, self.password),
-            headers=headers,
-            files={'file': metadata},
-            verify=self.verifytls
+            files={"file": metadata},
         )
-        self.session.close()
-
-        if response.status_code == 200 or response.status_code == 201:
-            answer_api = json.loads(response.text)
-            print(
-                "Upload metadatahere : " + self.server + "/geonetwork/srv/fre/catalog.search#/metadata/" +
-                answer_api['metadataInfos'][list(answer_api['metadataInfos'])[0]][0]['uuid']
-            )
-            # print(answer_api)
-            return answer_api
-        elif response.status_code == 400:
-            answer_api = json.loads(response.text)
-            print(answer_api)
-            return False
-        else:
-            print(response)
-            print(response.text)
-            return False
+        response.raise_for_status()
+        return response
 
     def get_thesaurus_dict(self):
-        url = self.server + "/geonetwork/srv/fre/thesaurus?_content_type=json"
-        # no needed to authenticate this is public
-        self.session = requests.Session()
-        response = self.session.get(url, verify=self.verifytls)
-        self.session.close()
-        return json.loads(response.text)
+        url = self.api_url.replace("/api", "") + "/fre/thesaurus?_content_type=json"
+        response = self.session.get(url)
+        return response.json()
 
     # not working yet
     def add_thesaurus_dict(self, filename):
@@ -155,22 +130,10 @@ class GnApi:
 
     # format of name [internal|external].[theme|place|...].[name]
     def delete_thesaurus_dict(self, name):
-        headers = {'Accept': 'application/json',
-                   'X-XSRF-TOKEN': self.xsrf_token,
-                   }
-
-        url = self.server + "/geonetwork/srv/api/registries/vocabularies/" + name
-        self.session = requests.Session()
-        response = self.session.delete(
-            url,
-            auth=(self.username, self.password),
-            headers=headers, verify=self.verifytls
-        )
-        self.session.close()
-        if response.status_code == 200:
-            return response.text
-        else:
-            return "Error while deleting thesaurus reason "+response.text
+        url = self.api_url + "/registries/vocabularies/" + name
+        response = self.session.delete(url)
+        response.raise_for_status()
+        return response.json()
 
     def closesession(self):
         self.session.close()

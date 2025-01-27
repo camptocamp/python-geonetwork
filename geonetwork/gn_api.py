@@ -57,7 +57,7 @@ class GnApi:
         logger.info("GN API Session started with geonetwork server version %s", version)
         return resp
 
-    def get_record_zip(self, uuid: str) -> bytes:
+    def get_record_zip(self, uuid: str) -> IO[bytes]:
         """
          retrieve the metadata for `uuid` as a zip archive including linked media.
         :param uuid: uuid of the metadata

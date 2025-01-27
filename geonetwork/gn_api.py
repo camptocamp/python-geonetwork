@@ -14,19 +14,31 @@ class GnApi:
         credentials: Union[Credentials, None] = None,
         verifytls: bool = True,
     ):
+        """
+        Initialize the GnApi object
+
+        The following handshake operation is perfomed with the geonetwork server:
+        - check geonetwork version
+        - get XSRF-token
+        - store XSRF token in headers for the current session. all API calls within this instance of GnApi use this XSRF token
+
+        :param api_url: direct url to the geonetwork API, usually ends with `/geonetwork/srv/api`
+        :param credentials: tuple of (login, password)
+        :param verifytls: boolean, default True. can be set to False in case of https servers with invalid certificates (e.g. in a local dev instance)
+        """
         self.api_url = api_url
         self.credentials = credentials
 
         self.session = GnSession(self.credentials, verifytls)
         self.session.set_base_header("Accept", "application/json")
-        self.init_xsrf_token()
+        self._init_xsrf_token()
 
-    def init_xsrf_token(self):
-        resp = self.get_version()
+    def _init_xsrf_token(self):
+        resp = self._get_version()
         self.xsrf_token = resp.cookies.get("XSRF-TOKEN", path="/geonetwork")
         self.session.set_base_header("X-XSRF-TOKEN", self.xsrf_token)
 
-    def get_version(self):
+    def _get_version(self):
         version_url = self.api_url + "/site"
         resp = self.session.get(version_url)
         resp.raise_for_status()
@@ -46,6 +58,11 @@ class GnApi:
         return resp
 
     def get_record_zip(self, uuid: str) -> bytes:
+        """
+         retrieve the metadata for `uuid` as a zip archive including linked media.
+        :param uuid: uuid of the metadata
+        :returns: bytes the metadata is returned as a bytes object
+        """
         resp = self.session.get(
             f"{self.api_url}/records/{uuid}",
             headers={"accept": "application/zip"},
@@ -56,6 +73,12 @@ class GnApi:
         return resp.content
 
     def put_record_zip(self, zipdata: bytes, overwrite: bool = True) -> Any:
+        """
+         upload metadata as a zip archive.
+        :param zipdata: bytes object of the zip file
+        :param overwrite: boolean [True] overwrite existing data or create a new record with new uuid
+        :returns: dict of the response including success of the operation, uuid, etc.
+        """
         resp = self.session.post(
             f"{self.api_url}/records",
             files={"file": ("file.zip", BytesIO(zipdata), "application/zip")},

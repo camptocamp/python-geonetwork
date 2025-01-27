@@ -28,17 +28,22 @@ Example 1: Get zip data
 
 ```
 from geonetwork import GnApi
-gn_api = GnApi(https://demo.georchestra.org/geonetwork/srv/api, ('login', 'password'))
-uuid = '01155972-f35f-4c74-b40f-451574ca1d7c'
-zip_record = gn_api.get_record_zip(uuid)
+gn_api = GnApi("https://demo.georchestra.org/geonetwork/srv/api")
+zipdata = gn_api.get_record_zip("c8166e8f-36a2-40ca-af1a-a00ab1fb20f7")
+import zipfile
+with zipfile.ZipFile(zipdata) as zf:
+    for f in zf.filelist:
+        print(f)
+with zipfile.ZipFile(zipdata) as zf:
+    with zf.open("c8166e8f-36a2-40ca-af1a-a00ab1fb20f7/info.xml") as f:
+        print(f.read().decode())
 ```
 
 Example 2: upload zip data
 
 ```
 with open("./meta.zip") as f:
-    zipdata = f.read()
-    GnApi("http://localhost:9090/geonetwork/srv/api", ("admin", "admin")).put_record_zip(zipdata)
+    GnApi("http://localhost:9090/geonetwork/srv/api", ("admin", "admin")).put_record_zip(f)
 ```
 
 ## Detailed description of library

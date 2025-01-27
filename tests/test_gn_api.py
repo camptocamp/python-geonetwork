@@ -1,4 +1,5 @@
 import pytest
+from io import BytesIO
 from requests.exceptions import HTTPError
 import requests_mock
 from geonetwork import GnApi
@@ -60,7 +61,7 @@ def test_record_zip(init_gn):
             return b"dummy_zip"
         m.get('http://geonetwork/api/records/1234', content=record_callback)
         zipdata = init_gn.get_record_zip("1234")
-        assert zipdata == b"dummy_zip"
+        assert zipdata.read() == b"dummy_zip"
 
 
 def test_record_zip_unknown_uuid(init_gn):
@@ -84,5 +85,5 @@ def test_upload_zip(init_gn):
             assert "dummy_zip" in request.text
             return {"created": "success"}
         m.post('http://geonetwork/api/records', json=record_callback)
-        zipdata = b"dummy_zip"
+        zipdata = BytesIO(b"dummy_zip")
         init_gn.put_record_zip(zipdata)

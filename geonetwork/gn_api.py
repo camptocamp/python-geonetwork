@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Union, Literal, Any
+from typing import Union, Literal, IO, Any
 from .gn_session import GnSession, Credentials, logger
 from .exceptions import APIVersionException, ParameterException
 
@@ -61,7 +61,7 @@ class GnApi:
         """
          retrieve the metadata for `uuid` as a zip archive including linked media.
         :param uuid: uuid of the metadata
-        :returns: bytes the metadata is returned as a bytes object
+        :returns: BytesIO file-type output data - the metadata is returned as a bytes object
         """
         resp = self.session.get(
             f"{self.api_url}/records/{uuid}",
@@ -70,18 +70,18 @@ class GnApi:
         if resp.status_code == 404:
             raise ParameterException({"code": 404, "msg": f"UUID {uuid} not found"})
         resp.raise_for_status()
-        return resp.content
+        return BytesIO(resp.content)
 
-    def put_record_zip(self, zipdata: bytes, overwrite: bool = True) -> Any:
+    def put_record_zip(self, zipdata: IO[bytes], overwrite: bool = True) -> Any:
         """
          upload metadata as a zip archive.
-        :param zipdata: bytes object of the zip file
+        :param zipdata: file-like object of the zip file (may also be BytesIO(constant_bytes))
         :param overwrite: boolean [True] overwrite existing data or create a new record with new uuid
         :returns: dict of the response including success of the operation, uuid, etc.
         """
         resp = self.session.post(
             f"{self.api_url}/records",
-            files={"file": ("file.zip", BytesIO(zipdata), "application/zip")},
+            files={"file": ("file.zip", zipdata, "application/zip")},
             params={
                 "metadataType": "METADATA",
                 "uuidProcessing": "OVERWRITE" if overwrite else "GENERATEUUID",

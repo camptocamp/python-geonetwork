@@ -220,7 +220,7 @@ class GnApi:
         resp = self.session.post(
             url,
             headers=headers,
-            data=query
+            json=query
         )
         resp.raise_for_status()
         return resp.json()

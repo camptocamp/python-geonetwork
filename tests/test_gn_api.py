@@ -112,10 +112,18 @@ def test_upload_zip_fail(init_gn):
             assert 'multipart/form-data' in request.headers.get("Content-Type")
             assert "application/zip" in request.text
             assert "dummy_zip" in request.text
-            return {"errors": ["err1", "err2"]}
+            return {
+                "errors": [
+                    {"message": "err1", "stack": "line1\nline2"},
+                    {"message": "err2", "stack": "e2/line1\ne2/line2"},
+                ]
+            }
         m.post('http://geonetwork/api/records', json=record_callback)
         zipdata = BytesIO(b"dummy_zip")
         with pytest.raises(ParameterException) as err:
             init_gn.put_record_zip(zipdata)
         assert err.value.args[0]["code"] == 404
-        assert err.value.args[0]["details"] == ["err1", "err2"]
+        assert err.value.args[0]["details"] == [
+            {"message": "err1", "stack": ["line1", "line2"]},
+            {"message": "err2", "stack": ["e2/line1", "e2/line2"]},
+        ]

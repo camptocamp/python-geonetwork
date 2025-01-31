@@ -90,7 +90,15 @@ class GnApi:
         resp.raise_for_status()
         results = resp.json()
         if results["errors"]:
-            raise ParameterException({"code": 404, "details": results["errors"]})
+            clean_error_stack = [
+                {
+                    **err,
+                    "stack": err["stack"].split("\n")
+                }
+                for err in results["errors"]
+            ]
+
+            raise ParameterException({"code": 404, "details": clean_error_stack})
 
         # take first id of results ids
         serial_id = next(iter(results["metadataInfos"].keys()))

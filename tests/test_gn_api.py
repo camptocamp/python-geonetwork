@@ -49,7 +49,7 @@ def test_unsupported_version():
         m.get('http://geonetwork/api/site', json=site_callback, cookies=cookies)
         with pytest.raises(APIVersionException) as err:
             GnApi("http://geonetwork/api")
-        assert err.value.args[0]["code"] == 501
+        assert err.value.code == 501
 
 
 def test_record_zip(init_gn):
@@ -70,7 +70,7 @@ def test_record_zip_unknown_uuid(init_gn):
         m.get('http://geonetwork/api/records/1232', status_code=404)
         with pytest.raises(ParameterException) as err:
             init_gn.get_record_zip("1232")
-        assert err.value.args[0]["code"] == 404
+        assert err.value.code == 404
 
 
 def test_upload_zip(init_gn):
@@ -122,8 +122,8 @@ def test_upload_zip_fail(init_gn):
         zipdata = BytesIO(b"dummy_zip")
         with pytest.raises(ParameterException) as err:
             init_gn.put_record_zip(zipdata)
-        assert err.value.args[0]["code"] == 404
-        assert err.value.args[0]["details"] == [
+        assert err.value.code == 404
+        assert err.value.details == [
             {"message": "err1", "stack": ["line1", "line2"]},
             {"message": "err2", "stack": ["e2/line1", "    at e2/line2"]},
         ]

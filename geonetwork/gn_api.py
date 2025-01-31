@@ -1,7 +1,7 @@
 from io import BytesIO
 from typing import Union, Literal, IO, Any
 from .gn_session import GnSession, Credentials, logger
-from .exceptions import APIVersionException, ParameterException, BaseExceptionConfig, build_exception
+from .exceptions import APIVersionException, ParameterException, GnExceptionHandler
 
 
 GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
@@ -13,7 +13,7 @@ class GnApi:
         api_url: str,
         credentials: Union[Credentials, None] = None,
         verifytls: bool = True,
-        base_exception_config=None,
+        exception_handler=None,
     ):
         """
         Initialize the GnApi object
@@ -27,12 +27,10 @@ class GnApi:
         :param credentials: tuple of (login, password)
         :param verifytls: boolean, default True. can be set to False in case of https servers with invalid certificates (e.g. in a local dev instance)
         """
-        if base_exception_config is None:
-            base_exception_config = BaseExceptionConfig()
-        base_exception = base_exception_config.base_exception
-        conversion_fn = base_exception_config.map_gn_to_base_function
-        self.api_version_exception = build_exception(base_exception, APIVersionException, conversion_fn)
-        self.parameter_exception = build_exception(base_exception, ParameterException, conversion_fn)
+        if exception_handler is None:
+            self.exception_handler = GnExceptionHandler()
+        else:
+            self.exception_handler = exception_handler
         self.api_url = api_url
         self.credentials = credentials
 
@@ -55,7 +53,7 @@ class GnApi:
             or (version < GN_VERSION_RANGE[0])
             or (version > GN_VERSION_RANGE[1])
         ):
-            raise self.api_version_exception(
+            raise self.exception_handler.APIVersionException(
                 code=501,
                 details=f"Version {version} not in allowed range {GN_VERSION_RANGE}",
             )
@@ -73,7 +71,7 @@ class GnApi:
             headers={"accept": "application/zip"},
         )
         if resp.status_code == 404:
-            raise self.parameter_exception(code=404, details=f"UUID {uuid} not found")
+            raise self.exception_handler.ParameterException(code=404, details=f"UUID {uuid} not found")
         resp.raise_for_status()
         return BytesIO(resp.content)
 
@@ -103,7 +101,7 @@ class GnApi:
                 for err in results["errors"]
             ]
 
-            raise self.parameter_exception(code=404, details=clean_error_stack)
+            raise self.exception_handler.ParameterException(code=404, details=clean_error_stack)
 
         # take first id of results ids
         serial_id = next(iter(results["metadataInfos"].values()))["uuid"]

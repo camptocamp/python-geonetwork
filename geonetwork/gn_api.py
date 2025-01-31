@@ -93,7 +93,7 @@ class GnApi:
             clean_error_stack = [
                 {
                     **err,
-                    "stack": [t.replace("\t", "    ") for t in err["stack"].split("\n")]
+                    "stack": [t.replace("\t", "    ") for t in err.get("stack", []).split("\n")]
                 }
                 for err in results["errors"]
             ]
@@ -101,7 +101,7 @@ class GnApi:
             raise ParameterException({"code": 404, "details": clean_error_stack})
 
         # take first id of results ids
-        serial_id = next(iter(results["metadataInfos"].keys()))
+        serial_id = next(iter(results["metadataInfos"].values()))["uuid"]
         metadata_json = self.session.get(
             f"{self.api_url}/records/{serial_id}",
             headers={"accept": "application/json"},

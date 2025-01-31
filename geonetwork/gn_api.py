@@ -93,7 +93,7 @@ class GnApi:
             clean_error_stack = [
                 {
                     **err,
-                    "stack": err["stack"].split("\n")
+                    "stack": [t.replace("\t", "    ") for t in err["stack"].split("\n")]
                 }
                 for err in results["errors"]
             ]

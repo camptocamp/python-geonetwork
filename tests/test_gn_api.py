@@ -115,7 +115,7 @@ def test_upload_zip_fail(init_gn):
             return {
                 "errors": [
                     {"message": "err1", "stack": "line1\nline2"},
-                    {"message": "err2", "stack": "e2/line1\ne2/line2"},
+                    {"message": "err2", "stack": "e2/line1\n\tat e2/line2"},
                 ]
             }
         m.post('http://geonetwork/api/records', json=record_callback)
@@ -125,5 +125,5 @@ def test_upload_zip_fail(init_gn):
         assert err.value.args[0]["code"] == 404
         assert err.value.args[0]["details"] == [
             {"message": "err1", "stack": ["line1", "line2"]},
-            {"message": "err2", "stack": ["e2/line1", "e2/line2"]},
+            {"message": "err2", "stack": ["e2/line1", "    at e2/line2"]},
         ]

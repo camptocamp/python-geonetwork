@@ -88,7 +88,21 @@ class GnApi:
             },
         )
         resp.raise_for_status()
-        return resp.json()
+        results = resp.json()
+        if results["errors"]:
+            raise ParameterException({"code": 404, "details": results["errors"]})
+
+        # take first id of results ids
+        serial_id = next(iter(results["metadataInfos"].keys()))
+        metadata_json = self.session.get(
+            f"{self.api_url}/records/{serial_id}",
+            headers={"accept": "application/json"},
+        ).json()
+        uuid = metadata_json["gmd:fileIdentifier"]["gco:CharacterString"]["#text"]
+        return {
+            "msg": f"Metadata creation successful ({uuid})",
+            "detail": results,
+        }
 
     def get_metadataxml(self, uuid):
         headers = {

@@ -213,13 +213,9 @@ class GnApi:
         looks like that :
          {"query":{"bool":{"must":[{"terms":{"isTemplate":["n"]}},{"multi_match":{"query":"test","type":"bool_prefix","fields":["resourceTitleObject.*^4","resourceAbstractObject.*^3","tag^2","resourceIdentifier"]}}],"must_not":{"terms":{"resourceType":["service","map","map/static","mapDigital"]}}}},"_source":["resourceTitleObject","uuid"],"from":0,"size":20}
         """
-        headers = {
-            'Content-Type' : 'application/json'
-        }
         url = self.api_url + "/search/records/_search?bucket=bucket"
         resp = self.session.post(
             url,
-            headers=headers,
             json=query
         )
         resp.raise_for_status()

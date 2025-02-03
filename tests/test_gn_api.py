@@ -129,14 +129,64 @@ def test_upload_zip_fail(init_gn):
         ]
 
 
-
 def test_search(init_gn):
-    with requests_mock.Mocker() as m:
+    QUERY_TEXT = (
+        '{"query": {"bool": {"must": [{"terms": {"isTemplate": ["n"]}}, '
+        '{"multi_match": {"query": "test", "type": "bool_prefix", "fields": '
+        '["resourceTitleObject.*^4", "resourceAbstractObject.*^3", "tag^2", '
+        '"resourceIdentifier"]}}], "must_not": {"terms": {"resourceType": '
+        '["service", "map", "map/static", "mapDigital"]}}}}, "_source": '
+        '["resourceTitleObject", "uuid"], "from": 0, "size": 20}'
+    )
+    QUERY_JSON = {
+        "query": {
+            "bool": {
+                "must": [
+                    {
+                        "terms": {
+                            "isTemplate": [
+                                "n"
+                            ]
+                        }
+                    },
+                    {
+                        "multi_match": {
+                            "query": "test",
+                            "type": "bool_prefix",
+                            "fields": [
+                                "resourceTitleObject.*^4",
+                                "resourceAbstractObject.*^3",
+                                "tag^2",
+                                "resourceIdentifier"
+                            ]
+                        }
+                    }
+                ],
+                "must_not": {
+                    "terms": {
+                        "resourceType": [
+                            "service",
+                            "map",
+                            "map/static",
+                            "mapDigital"
+                        ]
+                    }
+                }
+            }
+        },
+        "_source": [
+            "resourceTitleObject",
+            "uuid"
+        ],
+        "from": 0,
+        "size": 20
+    }
 
-        def record_callback(request, context):
+    with requests_mock.Mocker() as m:
+        def search_callback(request, context):
             assert request.headers.get("accept") == "application/json"
+            assert request.text == QUERY_TEXT
             assert request.headers.get('X-XSRF-TOKEN') == "dummy_xsrf"
             return {"created": "success"}
-        m.post('http://geonetwork/api/records', json=record_callback)
-        query_to_search = '{"query":{"bool":{"must":[{"terms":{"isTemplate":["n"]}},{"multi_match":{"query":"test","type":"bool_prefix","fields":["resourceTitleObject.*^4","resourceAbstractObject.*^3","tag^2","resourceIdentifier"]}}],"must_not":{"terms":{"resourceType":["service","map","map/static","mapDigital"]}}}},"_source":["resourceTitleObject","uuid"],"from":0,"size":20}'
-        init_gn.search(query_to_search)
+        m.post('http://geonetwork/api/search/records/_search', json=search_callback)
+        init_gn.search(QUERY_JSON)

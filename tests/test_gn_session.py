@@ -1,5 +1,8 @@
-from geonetwork import GnSession
 import requests_mock
+from requests.exceptions import ConnectTimeout
+import pytest
+from geonetwork import GnSession
+from geonetwork.exceptions import AuthException, TimeoutException
 
 
 def test_anonymous():
@@ -62,5 +65,18 @@ def test_invalid_credentials():
             context.status_code = 401
             return "test"
         m.get("http://mock_server", text=text_callback)
-        resp = gns.get("http://mock_server")
-        assert resp.status_code == 401
+        with pytest.raises(AuthException) as err:
+            gns.get("http://mock_server")
+        assert err.value.code == 401
+
+
+def test_timeout():
+    gns = GnSession(("test", "test"))
+    with requests_mock.Mocker() as m:
+
+        def timeout_callback(request, context):
+            raise ConnectTimeout
+        m.get("http://mock_server", text=timeout_callback)
+        with pytest.raises(TimeoutException) as err:
+            gns.get("http://mock_server")
+        assert err.value.code == 504

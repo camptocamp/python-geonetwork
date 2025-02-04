@@ -1,7 +1,9 @@
 import logging
 import requests
+from requests.exceptions import ConnectTimeout, ConnectionError, HTTPError
 from typing import Union, Dict, Any
 from collections import namedtuple
+from .exceptions import AuthException, TimeoutException
 
 
 Credentials = namedtuple("Credentials", ["login", "password"])
@@ -46,14 +48,21 @@ class GnSession(requests.Session):
         url = args[1] if len(args) >= 2 else kwargs.get("url")
         request_headers = kwargs.get("headers", {})
         consolidated_headers = {**self.base_headers, **request_headers}
-        r = super().request(
-            *args, **{
-                **kwargs,
-                "auth": self.credentials,
-                "headers": consolidated_headers,
-                "verify": self.verifytls,
-            }
-        )
-        logger.debug("Queried [%s] %s, got status %s", method, url, r.status_code)
-        logger.debug("Header: %s", consolidated_headers)
+        try:
+            r = super().request(
+                *args, **{
+                    **kwargs,
+                    "auth": self.credentials,
+                    "headers": consolidated_headers,
+                    "verify": self.verifytls,
+                }
+            )
+        except (ConnectTimeout, ConnectionError) as err:
+            logger.debug("[%s] %s: %s", method, url, err.__class__.__name__)
+            raise TimeoutException({"message": f"connection failed to {url}", "error": err})
+        logger.debug("[%s] %s, status %s", method, url, r.status_code)
+        logger.debug("Headers: %s", consolidated_headers)
+        if r.status_code in [401, 403]:
+            logger.debug("Authentication failed at [%s] %s", method, url)
+            raise AuthException(r.status_code, {"message": f"auth failed at {url}", "response": r})
         return r

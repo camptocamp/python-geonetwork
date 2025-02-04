@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import Union, Literal, IO, Any, Dict
 from .gn_session import GnSession, Credentials
 from .gn_logger import logger
-from .exceptions import APIVersionException, ParameterException, GnDetail, raise_for_status
+from .exceptions import APIVersionException, ParameterException, GnDetail, GnElasticException, raise_for_status
 
 
 GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
@@ -231,7 +231,7 @@ class GnApi:
             url,
             json=query
         )
-        raise_for_status(resp)
+        raise_for_status(resp, exception_class=GnElasticException)
         return resp.json()
 
     def close_session(self):

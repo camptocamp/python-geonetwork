@@ -1,8 +1,9 @@
 import pytest
 from io import BytesIO
+from requests.exceptions import HTTPError
 import requests_mock
 from geonetwork import GnApi
-from geonetwork.exceptions import APIVersionException, ParameterException, AuthException
+from geonetwork.exceptions import APIVersionException, ParameterException, AuthException, GnException, GnElasticException
 
 
 @pytest.fixture
@@ -188,3 +189,31 @@ def test_search(init_gn):
             return {"created": "success"}
         m.post('http://geonetwork/api/search/records/_search', json=search_callback)
         init_gn.search(QUERY_JSON)
+
+
+def test_search_fail(init_gn):
+    with requests_mock.Mocker() as m:
+        def search_callback(request, context):
+            context.status_code = 400
+            return {
+                "servlet": "spring",
+                "message": (
+                    "Error is: Bad Request.\nRequest:\n{&quot;query&quot;:"
+                    "{&quot;bool&quot;:{&quot;must&quot;:{},&quot;filter&quot;:"
+                    "{&quot;query_string&quot;:{&quot;query&quot;:&quot;*:* AND "
+                    "(draft:n OR draft:e)&quot;}}}}}\n.\nError:\n{&quot;error&quot;:"
+                    "{&quot;root_cause&quot;:[{&quot;type&quot;:&quot;x_content_"
+                    "parse_exception&quot;,&quot;reason&quot;:&quot;[1:27] [bool] "
+                    "failed to parse field [must]&quot;}],&quot;type&quot;:&quot;"
+                    "x_content_parse_exception&quot;,&quot;reason&quot;:&quot;[1:27] "
+                    "[bool] failed to parse field [must]&quot;,&quot;caused_by&quot;:"
+                    "{&quot;type&quot;:&quot;illegal_argument_exception&quot;,&quot;"
+                    "reason&quot;:&quot;query malformed, empty clause found at [1:27]"
+                    "&quot;}},&quot;status&quot;:400}."
+                )
+            }
+        m.post('http://geonetwork/api/search/records/_search', json=search_callback)
+        with pytest.raises(GnElasticException) as err:
+            init_gn.search({"query": {}})
+        assert err.value.code == 400
+        assert list(err.value.detail.info.keys()) == ["info_0", "Request:", "Error:"]

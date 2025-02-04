@@ -48,7 +48,7 @@ class GnSession(requests.Session):
             logger.debug("[%s] %s: %s", method, url, err.__class__.__name__, extra={"response": err.request})
             raise GnRequestException(
                 504,
-                GnDetail(f"HTTP error {err.__class__.__name__} at {url}", {"errror": err}),
+                GnDetail(f"HTTP error {err.__class__.__name__} at {url}", {"error": err}),
                 err.request,
                 err.response
             )

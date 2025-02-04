@@ -12,7 +12,6 @@ def init_gn():
         cookies.set("XSRF-TOKEN", "dummy_xsrf", path="/geonetwork")
 
         def site_callback(request, context):
-            print(request.headers)
             assert request.headers.get("accept") == "application/json"
             return {"system/platform/version": "4.3.2"}
         m.get('http://geonetwork/api/site', json=site_callback, cookies=cookies)
@@ -122,7 +121,7 @@ def test_upload_zip_fail(init_gn):
         with pytest.raises(ParameterException) as err:
             init_gn.put_record_zip(zipdata)
         assert err.value.code == 400
-        assert err.value.details["stack"] == [
+        assert err.value.detail.info["stack"] == [
             {"message": "err1", "stack": ["line1", "line2"]},
             {"message": "err2", "stack": ["e2/line1", "    at e2/line2"]},
         ]

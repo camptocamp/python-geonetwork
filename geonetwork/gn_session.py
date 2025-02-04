@@ -1,25 +1,12 @@
-import logging
 import requests
-from requests.exceptions import ConnectTimeout, ConnectionError, HTTPError
+from requests.exceptions import ConnectTimeout, ConnectionError
 from typing import Union, Dict, Any
 from collections import namedtuple
-from .exceptions import AuthException, TimeoutException
+from .exceptions import AuthException, TimeoutException, GnDetail
+from .gn_logger import logger
 
 
 Credentials = namedtuple("Credentials", ["login", "password"])
-
-
-logger = logging.getLogger("GN Session")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        "{asctime} - {name}:{levelname} - {message}",
-        style="{",
-        datefmt="%Y-%m-%d %H:%M",
-    )
-)
-logger.addHandler(handler)
 
 
 class GnSession(requests.Session):
@@ -58,11 +45,20 @@ class GnSession(requests.Session):
                 }
             )
         except (ConnectTimeout, ConnectionError) as err:
-            logger.debug("[%s] %s: %s", method, url, err.__class__.__name__)
-            raise TimeoutException({"message": f"connection failed to {url}", "error": err})
-        logger.debug("[%s] %s, status %s", method, url, r.status_code)
-        logger.debug("Headers: %s", consolidated_headers)
+            logger.debug("[%s] %s: %s", method, url, err.__class__.__name__, extra={"response": err.request})
+            raise TimeoutException(
+                GnDetail(f"connection failed to {url}", {"errror": err}),
+                err.request,
+                err.response
+            )
+        logger.debug("[%s] %s, status %s", method, url, r.status_code, extra={"response": r})
+        # logger.debug("Headers: %s", consolidated_headers)
         if r.status_code in [401, 403]:
-            logger.debug("Authentication failed at [%s] %s", method, url)
-            raise AuthException(r.status_code, {"message": f"auth failed at {url}", "response": r})
+            logger.debug("Authentication failed at [%s] %s", method, url, extra={"response": r})
+            raise AuthException(
+                r.status_code,
+                GnDetail(f"auth failed at {url}"),
+                r.request,
+                r
+            )
         return r

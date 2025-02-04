@@ -1,12 +1,27 @@
 from typing import Dict, Any
-from requests import Response
+from requests import Request, Response
+from dataclasses import dataclass
+
+
+@dataclass
+class GnDetail:
+    message: str
+    info: Dict[str, Any] = lambda: {}
 
 
 class GnException(Exception):
-    def __init__(self, code: int, details: Dict[str, Any]):
+    def __init__(
+            self,
+            code: int,
+            detail: GnDetail,
+            parent_request: Request = None,
+            parent_response: Response = None
+    ):
         super().__init__()
         self.code = code
-        self.details = details
+        self.detail = detail
+        self.parent_request = parent_request
+        self.parent_response = parent_response
 
 
 class AuthException(GnException):
@@ -14,8 +29,8 @@ class AuthException(GnException):
 
 
 class APIVersionException(GnException):
-    def __init__(self, details: Dict[str, Any]):
-        super().__init__(501, details)
+    def __init__(self, *args, **kwargs):
+        super().__init__(501, *args, **kwargs)
 
 
 class ParameterException(GnException):
@@ -23,10 +38,15 @@ class ParameterException(GnException):
 
 
 class TimeoutException(GnException):
-    def __init__(self, details: Dict[str, Any]):
-        super().__init__(504, details)
+    def __init__(self, *args, **kwargs):
+        super().__init__(504, *args, **kwargs)
 
 
 def raise_for_status(response: Response):
     if 400 <= response.status_code < 600:
-        raise GnException(response.status_code, {"response": response})
+        raise GnException(
+            response.status_code,
+            GnDetail("HTTP error in GN api"),
+            response.request,
+            response
+        )

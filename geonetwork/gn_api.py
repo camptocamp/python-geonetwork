@@ -1,7 +1,8 @@
 from io import BytesIO
 from typing import Union, Literal, IO, Any, Dict
-from .gn_session import GnSession, Credentials, logger
-from .exceptions import APIVersionException, ParameterException, raise_for_status
+from .gn_session import GnSession, Credentials
+from .gn_logger import logger
+from .exceptions import APIVersionException, ParameterException, GnDetail, raise_for_status
 
 
 GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
@@ -49,9 +50,9 @@ class GnApi:
             or (version > GN_VERSION_RANGE[1])
         ):
             raise APIVersionException(
-                details={
-                    "message": f"Version {version} not in allowed range {GN_VERSION_RANGE}",
-                }
+                detail=GnDetail(f"Version {version} not in allowed range {GN_VERSION_RANGE}"),
+                parent_request=resp.request,
+                parent_response=resp,
             )
         logger.info("GN API Session started with geonetwork server version %s", version)
         return resp
@@ -67,7 +68,7 @@ class GnApi:
             headers={"accept": "application/zip"},
         )
         if resp.status_code == 404:
-            raise ParameterException(code=404, details={"message": f"UUID {uuid} not found"})
+            raise ParameterException(code=404, detail=GnDetail(f"UUID {uuid} not found"))
         raise_for_status(resp)
         return BytesIO(resp.content)
 
@@ -97,10 +98,13 @@ class GnApi:
                 for err in results["errors"]
             ]
 
-            raise ParameterException(code=400, details={
-                "message": f"POST {self.api_url}/records failed",
-                "stack": clean_error_stack
-            })
+            raise ParameterException(
+                code=400,
+                detail=GnDetail(
+                    f"POST {self.api_url}/records failed",
+                    {"stack": clean_error_stack},
+                )
+            )
 
         # take first id of results ids
         serial_id = next(iter(results["metadataInfos"].values()))["uuid"]

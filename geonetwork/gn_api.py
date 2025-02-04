@@ -68,7 +68,12 @@ class GnApi:
             headers={"accept": "application/zip"},
         )
         if resp.status_code == 404:
-            raise ParameterException(code=404, detail=GnDetail(f"UUID {uuid} not found"))
+            raise ParameterException(
+                code=404,
+                detail=GnDetail(f"UUID {uuid} not found"),
+                parent_request=resp.request,
+                parent_response=resp
+            )
         raise_for_status(resp)
         return BytesIO(resp.content)
 
@@ -103,7 +108,9 @@ class GnApi:
                 detail=GnDetail(
                     f"POST {self.api_url}/records failed",
                     {"stack": clean_error_stack},
-                )
+                ),
+                parent_request=resp.request,
+                parent_response=resp,
             )
 
         # take first id of results ids

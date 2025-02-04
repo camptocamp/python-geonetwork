@@ -1,8 +1,8 @@
 import requests
-from requests.exceptions import ConnectTimeout, ConnectionError
+from requests.exceptions import RequestException
 from typing import Union, Dict, Any
 from collections import namedtuple
-from .exceptions import AuthException, TimeoutException, GnDetail
+from .exceptions import AuthException, GnRequestException, GnDetail
 from .gn_logger import logger
 
 
@@ -44,10 +44,11 @@ class GnSession(requests.Session):
                     "verify": self.verifytls,
                 }
             )
-        except (ConnectTimeout, ConnectionError) as err:
+        except RequestException as err:
             logger.debug("[%s] %s: %s", method, url, err.__class__.__name__, extra={"response": err.request})
-            raise TimeoutException(
-                GnDetail(f"connection failed to {url}", {"errror": err}),
+            raise GnRequestException(
+                504,
+                GnDetail(f"HTTP error {err.__class__.__name__} at {url}", {"errror": err}),
                 err.request,
                 err.response
             )

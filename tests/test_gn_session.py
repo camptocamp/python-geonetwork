@@ -2,7 +2,7 @@ import requests_mock
 from requests.exceptions import ConnectTimeout
 import pytest
 from geonetwork import GnSession
-from geonetwork.exceptions import AuthException, TimeoutException
+from geonetwork.exceptions import AuthException, GnRequestException
 
 
 def test_anonymous():
@@ -77,6 +77,6 @@ def test_timeout():
         def timeout_callback(request, context):
             raise ConnectTimeout
         m.get("http://mock_server", text=timeout_callback)
-        with pytest.raises(TimeoutException) as err:
+        with pytest.raises(GnRequestException) as err:
             gns.get("http://mock_server")
         assert err.value.code == 504

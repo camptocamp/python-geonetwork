@@ -37,9 +37,8 @@ class ParameterException(GnException):
     pass
 
 
-class TimeoutException(GnException):
-    def __init__(self, *args, **kwargs):
-        super().__init__(504, *args, **kwargs)
+class GnRequestException(GnException):
+    pass
 
 
 def raise_for_status(response: Response):

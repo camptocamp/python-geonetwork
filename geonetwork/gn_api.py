@@ -114,7 +114,7 @@ class GnApi:
             )
 
         # take first id of results ids
-        serial_id = next(iter(results["metadataInfos"].values()))["uuid"]
+        serial_id = next(iter(results["metadataInfos"].values()))[0]["uuid"]
         metadata_json = self.session.get(
             f"{self.api_url}/records/{serial_id}",
             headers={"accept": "application/json"},

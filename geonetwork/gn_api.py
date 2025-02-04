@@ -1,7 +1,7 @@
 from io import BytesIO
 from typing import Union, Literal, IO, Any
 from .gn_session import GnSession, Credentials, logger
-from .exceptions import APIVersionException, ParameterException
+from .exceptions import APIVersionException, ParameterException, GnExceptionHandler
 
 
 GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
@@ -13,6 +13,7 @@ class GnApi:
         api_url: str,
         credentials: Union[Credentials, None] = None,
         verifytls: bool = True,
+        exception_handler=None,
     ):
         """
         Initialize the GnApi object
@@ -26,6 +27,10 @@ class GnApi:
         :param credentials: tuple of (login, password)
         :param verifytls: boolean, default True. can be set to False in case of https servers with invalid certificates (e.g. in a local dev instance)
         """
+        if exception_handler is None:
+            self.exception_handler = GnExceptionHandler()
+        else:
+            self.exception_handler = exception_handler
         self.api_url = api_url
         self.credentials = credentials
 
@@ -48,11 +53,9 @@ class GnApi:
             or (version < GN_VERSION_RANGE[0])
             or (version > GN_VERSION_RANGE[1])
         ):
-            raise APIVersionException(
-                {
-                    "code": 501,
-                    "msg": f"Version {version} not in allowed range {GN_VERSION_RANGE}",
-                }
+            raise self.exception_handler.APIVersionException(
+                code=501,
+                details=f"Version {version} not in allowed range {GN_VERSION_RANGE}",
             )
         logger.info("GN API Session started with geonetwork server version %s", version)
         return resp
@@ -68,7 +71,7 @@ class GnApi:
             headers={"accept": "application/zip"},
         )
         if resp.status_code == 404:
-            raise ParameterException({"code": 404, "msg": f"UUID {uuid} not found"})
+            raise self.exception_handler.ParameterException(code=404, details=f"UUID {uuid} not found")
         resp.raise_for_status()
         return BytesIO(resp.content)
 
@@ -98,7 +101,7 @@ class GnApi:
                 for err in results["errors"]
             ]
 
-            raise ParameterException({"code": 404, "details": clean_error_stack})
+            raise self.exception_handler.ParameterException(code=404, details=clean_error_stack)
 
         # take first id of results ids
         serial_id = next(iter(results["metadataInfos"].values()))["uuid"]

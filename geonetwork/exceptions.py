@@ -1,12 +1,12 @@
 from typing import Dict, Any
 from requests import Request, Response
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class GnDetail:
     message: str
-    info: Dict[str, Any] = lambda: {}
+    info: Dict[str, Any] = field(default_factory=lambda: {})
 
 
 class GnException(Exception):

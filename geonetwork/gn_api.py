@@ -5,7 +5,7 @@ from .gn_logger import logger
 from .exceptions import APIVersionException, ParameterException, GnDetail, GnElasticException, raise_for_status
 
 
-GN_VERSION_RANGE = ["4.2.8", "4.4.5"]
+GN_VERSION_RANGE = ["4.2.8", "4.999"]
 
 
 class GnApi:
@@ -69,7 +69,7 @@ class GnApi:
         )
         if resp.status_code == 404:
             raise ParameterException(
-                code=404,
+                code=400,
                 detail=GnDetail(f"UUID {uuid} not found"),
                 parent_request=resp.request,
                 parent_response=resp

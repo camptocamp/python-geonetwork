@@ -1,4 +1,5 @@
 import pytest
+from zipfile import ZipFile
 from io import BytesIO
 from requests.exceptions import HTTPError
 import requests_mock
@@ -18,6 +19,17 @@ def init_gn():
         m.get('http://geonetwork/api/site', json=site_callback, cookies=cookies)
         gn = GnApi("http://geonetwork/api")
         return gn
+
+
+@pytest.fixture
+def zipdata():
+    zz = BytesIO()
+    with ZipFile(zz, "w") as zf:
+        with zf.open("index.csv", "w") as ii:
+            ii.write(b'"schema";"uuid";"id";"type";"isHarvested";"title";"abstract"\n"iso19139";"859ebc17-6811-48f6-a7ef-b9a29ad94f95";"39636";"METADATA";"true";"-";"-"\n')
+        with zf.open("859ebc17-6811-48f6-a7ef-b9a29ad94f95/metadata/metadata.xml", "w") as xx:  
+            xx.write(b"<dummy><xml></xml></dummy>")
+    return zz
 
 
 def test_init(init_gn):
@@ -55,7 +67,6 @@ def test_record_zip(init_gn):
     with requests_mock.Mocker() as m:
 
         def record_callback(request, context):
-            print(request.headers)
             assert request.headers.get("accept") == "application/zip"
             return b"dummy_zip"
         m.get('http://geonetwork/api/records/1234', content=record_callback)
@@ -69,20 +80,20 @@ def test_record_zip_unknown_uuid(init_gn):
         m.get('http://geonetwork/api/records/1232', status_code=404)
         with pytest.raises(ParameterException) as err:
             init_gn.get_record_zip("1232")
-        assert err.value.code == 404
+        assert err.value.code == 400
 
 
-def test_upload_zip(init_gn):
+def test_upload_zip(init_gn, zipdata):
     with requests_mock.Mocker() as m:
 
         def creation_callback(request, context):
             assert request.headers.get("accept") == "application/json"
-            assert request.headers.get('Content-Length') == '184'
+            assert request.headers.get('Content-Length') == '175'
             assert request.headers.get('X-XSRF-TOKEN') == "dummy_xsrf"
             assert 'multipart/form-data' in request.headers.get("Content-Type")
             assert "application/zip" in request.text
-            assert "dummy_zip" in request.text
-            return {"errors": [], "metadataInfos": {101: {"uuid": 101}}}
+            assert "filename=\"file.zip\"\r\nContent-Type: application/zip" in request.text
+            return {"errors": [], "metadataInfos": {101: [{"uuid": 101}]}}
         m.post('http://geonetwork/api/records', json=creation_callback)
 
         def record_callback(request, context):
@@ -96,7 +107,7 @@ def test_upload_zip(init_gn):
                 }
             }
         m.get('http://geonetwork/api/records/101', json=record_callback)
-        zipdata = BytesIO(b"dummy_zip")
+        # zipdata = BytesIO(b"dummy_zip")
         resp = init_gn.put_record_zip(zipdata)
         assert resp["msg"] == "Metadata creation successful (pseuso_uuid-1234-55ac)"
 

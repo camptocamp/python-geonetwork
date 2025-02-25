@@ -1,23 +1,12 @@
-import logging
 import requests
+from requests.exceptions import RequestException
 from typing import Union, Dict, Any
 from collections import namedtuple
+from .exceptions import AuthException, GnRequestException, GnDetail
+from .gn_logger import logger
 
 
 Credentials = namedtuple("Credentials", ["login", "password"])
-
-
-logger = logging.getLogger("GN Session")
-logger.setLevel(logging.DEBUG)
-handler = logging.StreamHandler()
-handler.setFormatter(
-    logging.Formatter(
-        "{asctime} - {name}:{levelname} - {message}",
-        style="{",
-        datefmt="%Y-%m-%d %H:%M",
-    )
-)
-logger.addHandler(handler)
 
 
 class GnSession(requests.Session):
@@ -46,14 +35,31 @@ class GnSession(requests.Session):
         url = args[1] if len(args) >= 2 else kwargs.get("url")
         request_headers = kwargs.get("headers", {})
         consolidated_headers = {**self.base_headers, **request_headers}
-        r = super().request(
-            *args, **{
-                **kwargs,
-                "auth": self.credentials,
-                "headers": consolidated_headers,
-                "verify": self.verifytls,
-            }
-        )
-        logger.debug("Queried [%s] %s, got status %s", method, url, r.status_code)
-        logger.debug("Header: %s", consolidated_headers)
+        try:
+            r = super().request(
+                *args, **{
+                    **kwargs,
+                    "auth": self.credentials,
+                    "headers": consolidated_headers,
+                    "verify": self.verifytls,
+                }
+            )
+        except RequestException as err:
+            logger.debug("[%s] %s: %s", method, url, err.__class__.__name__, extra={"response": err.request})
+            raise GnRequestException(
+                504,
+                GnDetail(f"HTTP error {err.__class__.__name__} at {url}", {"error": err}),
+                err.request,
+                err.response
+            )
+        logger.debug("[%s] %s, status %s", method, url, r.status_code, extra={"response": r})
+        # logger.debug("Headers: %s", consolidated_headers)
+        if r.status_code in [401, 403]:
+            logger.debug("Authentication failed at [%s] %s", method, url, extra={"response": r})
+            raise AuthException(
+                r.status_code,
+                GnDetail(f"auth failed at {url}"),
+                r.request,
+                r
+            )
         return r

@@ -5,7 +5,7 @@ from .gn_logger import logger
 from .exceptions import APIVersionException, ParameterException, GnDetail, GnElasticException, raise_for_status
 
 
-GN_VERSION_RANGE = ["4.2.2", "4.999"]
+GN_VERSION_RANGE = ["3.8.2", "4.999"]
 
 
 class GnApi:

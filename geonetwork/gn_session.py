@@ -6,6 +6,8 @@ from .exceptions import AuthException, GnRequestException, GnDetail
 from .gn_logger import logger
 
 
+DEFAULT_TIMEOUT = (30, 300)  # (connect, read)
+
 Credentials = namedtuple("Credentials", ["login", "password"])
 
 
@@ -38,6 +40,7 @@ class GnSession(requests.Session):
         try:
             r = super().request(
                 *args, **{
+                    "timeout": DEFAULT_TIMEOUT,
                     **kwargs,
                     "auth": self.credentials,
                     "headers": consolidated_headers,

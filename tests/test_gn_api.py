@@ -107,9 +107,9 @@ def test_upload_zip(init_gn, zipdata):
                 }
             }
         m.get('http://geonetwork/api/records/101', json=record_callback)
-        # zipdata = BytesIO(b"dummy_zip")
         resp = init_gn.put_record_zip(zipdata)
-        assert resp["msg"] == "Metadata creation successful (pseuso_uuid-1234-55ac)"
+        assert resp["msg"] == "Metadata creation successful"
+        assert resp["serial_id"] == "pseuso_uuid-1234-55ac"
 
 
 def test_upload_zip_fail(init_gn):

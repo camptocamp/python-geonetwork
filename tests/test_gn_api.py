@@ -93,7 +93,7 @@ def test_upload_zip(init_gn, zipdata):
             assert 'multipart/form-data' in request.headers.get("Content-Type")
             assert "application/zip" in request.text
             assert "filename=\"file.zip\"\r\nContent-Type: application/zip" in request.text
-            return {"errors": [], "metadataInfos": {101: [{"uuid": 101}]}}
+            return {"errors": [], "metadataInfos": {101: [{"uuid": "101"}]}}
         m.post('http://geonetwork/api/records', json=creation_callback)
 
         resp = init_gn.put_record_zip(zipdata)

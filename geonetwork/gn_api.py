@@ -121,7 +121,7 @@ class GnApi:
             "detail": results,
         }
 
-    def get_metadataxml(self, uuid):
+    def get_metadataxml(self, uuid: str) -> Any:
         headers = {
             'Accept': 'application/xml',
         }

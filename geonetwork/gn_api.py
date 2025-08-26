@@ -115,13 +115,9 @@ class GnApi:
 
         # take first id of results ids
         serial_id = next(iter(results["metadataInfos"].values()))[0]["uuid"]
-        metadata_json = self.session.get(
-            f"{self.api_url}/records/{serial_id}",
-            headers={"accept": "application/json"},
-        ).json()
-        uuid = metadata_json["gmd:fileIdentifier"]["gco:CharacterString"]["#text"]
         return {
-            "msg": f"Metadata creation successful ({uuid})",
+            "msg": "Metadata creation successful",
+            "serial_id": serial_id,
             "detail": results,
         }
 
@@ -129,13 +125,25 @@ class GnApi:
         headers = {
             'Accept': 'application/xml',
         }
-        url = self.server + "/records/"+uuid
+        url = f"{self.api_url}/records/{uuid}"
         resp = self.session.get(
             url,
             headers=headers,
         )
         raise_for_status(resp)
         return resp.content
+
+    def get_metadatajson(self, uuid):
+        headers = {
+            'Accept': 'application/json',
+        }
+        url = f"{self.api_url}/records/{uuid}"
+        resp = self.session.get(
+            url,
+            headers=headers,
+        )
+        raise_for_status(resp)
+        return resp.json()
 
     UuidProcs = Literal["NOTHING", "OVERWRITE", "GENERATEUUID", "REMOVE_AND_REPLACE"]
 

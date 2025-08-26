@@ -133,7 +133,7 @@ class GnApi:
         raise_for_status(resp)
         return resp.content
 
-    def get_metadatajson(self, uuid):
+    def get_metadatajson(self, uuid: str) -> Any:
         headers = {
             'Accept': 'application/json',
         }

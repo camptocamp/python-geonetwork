@@ -93,23 +93,12 @@ def test_upload_zip(init_gn, zipdata):
             assert 'multipart/form-data' in request.headers.get("Content-Type")
             assert "application/zip" in request.text
             assert "filename=\"file.zip\"\r\nContent-Type: application/zip" in request.text
-            return {"errors": [], "metadataInfos": {101: [{"uuid": 101}]}}
+            return {"errors": [], "metadataInfos": {101: [{"uuid": "101"}]}}
         m.post('http://geonetwork/api/records', json=creation_callback)
 
-        def record_callback(request, context):
-            assert request.headers.get("accept") == "application/json"
-            assert request.headers.get('X-XSRF-TOKEN') == "dummy_xsrf"
-            return {
-                "gmd:fileIdentifier": {
-                    "gco:CharacterString": {
-                        "#text": "pseuso_uuid-1234-55ac"
-                    }
-                }
-            }
-        m.get('http://geonetwork/api/records/101', json=record_callback)
-        # zipdata = BytesIO(b"dummy_zip")
         resp = init_gn.put_record_zip(zipdata)
-        assert resp["msg"] == "Metadata creation successful (pseuso_uuid-1234-55ac)"
+        assert resp["msg"] == "Metadata creation successful"
+        assert resp["serial_id"] == "101"
 
 
 def test_upload_zip_fail(init_gn):

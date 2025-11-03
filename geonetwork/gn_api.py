@@ -57,14 +57,14 @@ class GnApi:
         logger.info("GN API Session started with geonetwork server version %s", version)
         return resp
 
-    def get_record_zip(self, uuid: str) -> IO[bytes]:
+    def get_record_zip(self, uuid: str, withrelated: bool | None = False) -> IO[bytes]:
         """
          retrieve the metadata for `uuid` as a zip archive including linked media.
         :param uuid: uuid of the metadata
         :returns: BytesIO file-type output data - the metadata is returned as a bytes object
         """
         resp = self.session.get(
-            f"{self.api_url}/records/{uuid}",
+            f"{self.api_url}/records/{uuid}?withRelated={str(withrelated)}",
             headers={"accept": "application/zip"},
         )
         if resp.status_code == 404:

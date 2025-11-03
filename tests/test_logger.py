@@ -34,4 +34,4 @@ def test_log_object():
         zipdata = gn.get_record_zip("1234")
         assert zipdata.read() == b"dummy_zip"
         URLs = [r.url for r in log_handler.responses if r is not None]
-        assert URLs == ['http://geonetwork/api/site', 'http://geonetwork/api/records/1234']
+        assert URLs == ['http://geonetwork/api/site', 'http://geonetwork/api/records/1234?withRelated=False']

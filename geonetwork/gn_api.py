@@ -242,5 +242,31 @@ class GnApi:
         raise_for_status(resp, exception_class=GnElasticException)
         return resp.json()
 
+    def put_publish_record(self, uuid: str) -> Any:
+        """
+        Publish a metadata record
+        :param uuid: uuid of the metadata to publish
+        :returns: response from the API
+        """
+        url = f"{self.api_url}/records/{uuid}/publish"
+        resp = self.session.put(url)
+        raise_for_status(resp)
+        if resp.content:
+            return resp.json()
+        return {"msg": "Metadata published successfully", "uuid": uuid}
+
+    def put_unpublish_record(self, uuid: str) -> Any:
+        """
+        Unpublish a metadata record
+        :param uuid: uuid of the metadata to unpublish
+        :returns: response from the API
+        """
+        url = f"{self.api_url}/records/{uuid}/unpublish"
+        resp = self.session.put(url)
+        raise_for_status(resp)
+        if resp.content:
+            return resp.json()
+        return {"msg": "Metadata unpublished successfully", "uuid": uuid}
+
     def close_session(self):
         self.session.close()

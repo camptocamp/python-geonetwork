@@ -217,3 +217,69 @@ def test_search_fail(init_gn):
             init_gn.search({"query": {}})
         assert err.value.code == 400
         assert list(err.value.detail.info.keys()) == ["info_0", "Request:", "Error:"]
+
+
+def test_get_sharing_record(init_gn):
+    SHARING_RESPONSE = {
+        "privileges": [
+            {
+                "group": 1,
+                "operations": {
+                    "view": True,
+                    "download": False,
+                    "dynamic": False,
+                    "featured": False,
+                    "notify": False,
+                    "editing": False,
+                }
+            }
+        ]
+    }
+    with requests_mock.Mocker() as m:
+        def sharing_callback(request, context):
+            assert request.headers.get("accept") == "application/json"
+            assert request.headers.get("X-XSRF-TOKEN") == "dummy_xsrf"
+            return SHARING_RESPONSE
+        m.get("http://geonetwork/api/records/1234/sharing", json=sharing_callback)
+        result = init_gn.get_sharing_record("1234")
+        assert result == SHARING_RESPONSE
+
+
+def test_put_sharing_record_with_json_response(init_gn):
+    SHARING_BODY = {
+        "clear": True,
+        "privileges": [
+            {
+                "group": 1,
+                "operations": {
+                    "view": True,
+                    "download": False,
+                    "dynamic": False,
+                    "featured": False,
+                    "notify": False,
+                    "editing": False,
+                }
+            }
+        ]
+    }
+    with requests_mock.Mocker() as m:
+        def sharing_callback(request, context):
+            assert request.headers.get("Content-Type") == "application/json"
+            assert request.headers.get("X-XSRF-TOKEN") == "dummy_xsrf"
+            assert request.json() == SHARING_BODY
+            return {"status": "ok"}
+        m.put("http://geonetwork/api/records/1234/sharing", json=sharing_callback)
+        result = init_gn.put_sharing_record("1234", SHARING_BODY)
+        assert result == {"status": "ok"}
+
+
+def test_put_sharing_record_empty_response(init_gn):
+    SHARING_BODY = {"clear": True, "privileges": []}
+    with requests_mock.Mocker() as m:
+        def sharing_callback(request, context):
+            assert request.headers.get("X-XSRF-TOKEN") == "dummy_xsrf"
+            context.status_code = 204
+            return None
+        m.put("http://geonetwork/api/records/1234/sharing", json=sharing_callback)
+        result = init_gn.put_sharing_record("1234", SHARING_BODY)
+        assert result == {"msg": "Sharing updated successfully", "uuid": "1234"}

@@ -268,5 +268,46 @@ class GnApi:
             return resp.json()
         return {"msg": "Metadata unpublished successfully", "uuid": uuid}
 
+    def get_sharing_record(self, uuid: str) -> Any:
+        """
+        Get sharing settings for a metadata record
+        :param uuid: uuid of the metadata
+        :returns: dict with current sharing settings (privileges per group)
+        """
+        url = f"{self.api_url}/records/{uuid}/sharing"
+        resp = self.session.get(url)
+        raise_for_status(resp)
+        return resp.json()
+
+    def put_sharing_record(self, uuid: str, sharing: Dict[str, Any]) -> Any:
+        """
+        Set sharing settings for a metadata record.
+        :param uuid: uuid of the metadata
+        :param sharing: dict matching the GeoNetwork SharingParameter schema, e.g.:
+            {
+                "clear": True,
+                "privileges": [
+                    {
+                        "group": 1,
+                        "operations": {
+                            "view": True,
+                            "download": False,
+                            "dynamic": False,
+                            "featured": False,
+                            "notify": False,
+                            "editing": False
+                        }
+                    }
+                ]
+            }
+        :returns: response from the API
+        """
+        url = f"{self.api_url}/records/{uuid}/sharing"
+        resp = self.session.put(url, json=sharing)
+        raise_for_status(resp)
+        if resp.content:
+            return resp.json()
+        return {"msg": "Sharing updated successfully", "uuid": uuid}
+
     def close_session(self):
         self.session.close()
